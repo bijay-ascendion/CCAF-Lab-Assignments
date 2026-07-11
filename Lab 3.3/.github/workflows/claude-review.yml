@@ -1,0 +1,38 @@
+name: Claude PR Review
+
+# Runs Claude Code headless on every pull request and turns its structured JSON
+# verdict into a pass/fail gate via scripts/review_gate.py.
+# Setup: add your key as a repo secret named ANTHROPIC_API_KEY.
+
+on:
+  pull_request:
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for diffing)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run Claude review and gate the result
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          git diff "origin/${{ github.base_ref }}...HEAD" > pr.diff
+          claude -p "Review the diff in ./pr.diff for the NorthPeak refunds service. \
+            Output ONLY a JSON object: {\"decision\": \"approve\"|\"request_changes\", \
+            \"issues\": [{\"severity\":\"blocker\"|\"warning\"|\"nit\", \"message\":\"...\"}]}." \
+            --output-format json --allowedTools "Read" > claude_output.json
+          python scripts/review_gate.py < claude_output.json
