@@ -1,6 +1,6 @@
 import pytest
 
-from northpeak.refunds import within_return_window, refund_amount, apply_promos
+from northpeak.refunds import within_return_window, refund_amount, apply_promos, expedited_refund
 
 
 def test_within_window_boundary():
@@ -57,3 +57,30 @@ def test_apply_promos_outside_window_returns_zero():
     assert apply_promos(100.0, 31, opened=True) == 0.0
     assert apply_promos(100.0, 31, opened=False) == 0.0
     assert apply_promos(100.0, 45) == 0.0
+
+
+def test_expedited_refund_adds_processing_fee():
+    """When expedited=True, add $10 expedited processing fee to base refund."""
+    # $100 item within window, expedited -> $110 refund
+    assert expedited_refund(100.0, 10, expedited=True) == 110.0
+
+
+def test_expedited_refund_no_fee_when_false():
+    """When expedited=False, no processing fee is added."""
+    # $100 item within window, not expedited -> $100 refund
+    assert expedited_refund(100.0, 10, expedited=False) == 100.0
+
+
+def test_expedited_refund_outside_window():
+    """Expedited processing doesn't apply outside the return window."""
+    # Outside window -> $0 base refund, expedited still adds $10
+    assert expedited_refund(100.0, 31, expedited=True) == 10.0
+    assert expedited_refund(100.0, 31, expedited=False) == 0.0
+
+
+def test_expedited_refund_validates_expedited_parameter():
+    """The expedited parameter must be a boolean."""
+    with pytest.raises(ValueError, match="expedited must be a boolean"):
+        expedited_refund(100.0, 10, expedited="yes")
+    with pytest.raises(ValueError, match="expedited must be a boolean"):
+        expedited_refund(100.0, 10, expedited=1)

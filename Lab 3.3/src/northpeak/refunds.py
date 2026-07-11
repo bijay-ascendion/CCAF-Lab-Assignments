@@ -43,3 +43,25 @@ def apply_promos(price: float, days_since_delivery: int, opened: bool = False) -
         return round(base_refund * 0.8, 2)
 
     return base_refund
+
+
+def expedited_refund(price: float, days_since_delivery: int, expedited: bool) -> float:
+    """Calculate refund with expedited processing fee.
+
+    Args:
+        price: Original item price
+        days_since_delivery: Days since delivery
+        expedited: If True, add $10 expedited processing fee
+
+    Returns:
+        Refund amount with expedited fee added if applicable
+    """
+    if not isinstance(expedited, bool):
+        raise ValueError("expedited must be a boolean")
+
+    base = refund_amount(price, days_since_delivery)
+
+    if expedited:
+        return base + 10.0
+
+    return base
